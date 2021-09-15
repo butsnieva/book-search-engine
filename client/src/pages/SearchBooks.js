@@ -12,7 +12,7 @@ import { useMutation } from '@apollo/client';
 import { SAVE_BOOK } from '../utils/mutations';
 
 import Auth from '../utils/auth';
-// import { saveBook, searchGoogleBooks } from '../utils/API';
+import { searchGoogleBooks } from '../utils/API';
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 
 const SearchBooks = () => {
@@ -41,9 +41,7 @@ const SearchBooks = () => {
     }
 
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${searchInput}`
-      );
+      const response = await searchGoogleBooks(searchInput);
 
       if (!response.ok) {
         throw new Error('something went wrong!');
@@ -57,6 +55,7 @@ const SearchBooks = () => {
         title: book.volumeInfo.title,
         description: book.volumeInfo.description,
         image: book.volumeInfo.imageLinks?.thumbnail || '',
+        link: book.volumeInfo.infoLink,
       }));
 
       setSearchedBooks(bookData);
@@ -74,15 +73,19 @@ const SearchBooks = () => {
     // get token
     const token = Auth.loggedIn() ? Auth.getToken() : null;
 
+    // console.log("save book", bookToSave);
+    console.log(savedBookIds);
+
     if (!token) {
       return false;
     }
 
     try {
-      const { data } = await saveBook({
-        variables: { bookData: { ...bookToSave } },
+      const response = await saveBook({
+        variables: {
+          bookData: bookToSave,
+        },
       });
-      console.log(savedBookIds);
 
       // if book successfully saves to user's account, save book id to state
       setSavedBookIds([...savedBookIds, bookToSave.bookId]);
@@ -139,6 +142,11 @@ const SearchBooks = () => {
                   <Card.Title>{book.title}</Card.Title>
                   <p className='small'>Authors: {book.authors}</p>
                   <Card.Text>{book.description}</Card.Text>
+                  <Card.Text>
+                    <a href={book.link} target='_blank'>
+                      View Book
+                    </a>
+                  </Card.Text>
                   {Auth.loggedIn() && (
                     <Button
                       disabled={savedBookIds?.some(
